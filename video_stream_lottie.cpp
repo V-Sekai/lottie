@@ -135,3 +135,173 @@ Vector2 VideoStreamLottie::get_scale() const {
 	return scale;
 }
 void VideoStreamLottie::set_audio_track(int p_track) {}
+
+ VideoStreamPlaybackLottie::VideoStreamPlaybackLottie() {
+}
+
+VideoStreamPlaybackLottie::~VideoStreamPlaybackLottie() {
+}
+
+bool VideoStreamPlaybackLottie::open_data(const String &p_file) {
+	if (p_file.empty()) {
+		return false;
+	}
+	data = p_file;
+	lottie = rlottie::Animation::loadFromData(p_file.utf8().ptrw(), p_file.md5_text().utf8().ptrw());
+	size_t width = 0;
+	size_t height = 0;
+	lottie->size(width, height);
+	texture->create(width, height, Image::FORMAT_RGBA8, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
+	video_frames_pos = 0;
+	video_frames.resize(1);
+	return true;
+}
+
+void VideoStreamPlaybackLottie::stop() {
+	if (playing) {
+		open_data(data); //Should not fail here...
+		video_frames_capacity = video_frames_pos = 0;
+		num_decoded_samples = 0;
+		video_frame_delay = video_pos = 0.0;
+	}
+	time = 0.0;
+	playing = false;
+}
+
+void VideoStreamPlaybackLottie::play() {
+	stop();
+	delay_compensation = ProjectSettings::get_singleton()->get("audio/video_delay_compensation_ms");
+	delay_compensation /= 1000.0;
+	playing = true;
+}
+
+bool VideoStreamPlaybackLottie::is_playing() const {
+	return playing;
+}
+
+void VideoStreamPlaybackLottie::set_paused(bool p_paused) {
+	paused = p_paused;
+}
+
+bool VideoStreamPlaybackLottie::is_paused() const {
+	return paused;
+}
+
+void VideoStreamPlaybackLottie::set_loop(bool p_enable) {
+	loop = p_enable;
+}
+
+bool VideoStreamPlaybackLottie::has_loop() const {
+	return loop;
+}
+
+float VideoStreamPlaybackLottie::get_length() const {
+	return lottie->totalFrame() / lottie->frameRate();
+}
+
+float VideoStreamPlaybackLottie::get_playback_position() const {
+	return video_pos;
+}
+
+void VideoStreamPlaybackLottie::seek(float p_time) {
+	time = p_time;
+}
+
+void VideoStreamPlaybackLottie::set_audio_track(int p_idx) {
+}
+
+Ref<Texture> VideoStreamPlaybackLottie::get_texture() const {
+	return texture;
+}
+
+bool VideoStreamPlaybackLottie::has_enough_video_frames() const {
+	if (video_frames_pos > 0) {
+		// FIXME: AudioServer output latency was fixed in af9bb0e, previously it used to
+		// systematically return 0. Now that it gives a proper latency, it broke this
+		// code where the delay compensation likely never really worked.
+		//const double audio_delay = AudioServer::get_singleton()->get_output_latency();
+		const double video_time = (video_frames_pos - 1) / lottie->frameRate();
+		return video_time >= time + /* audio_delay + */ delay_compensation;
+	}
+	return false;
+}
+
+bool VideoStreamPlaybackLottie::should_process() {
+	// FIXME: AudioServer output latency was fixed in af9bb0e, previously it used to
+	// systematically return 0. Now that it gives a proper latency, it broke this
+	// code where the delay compensation likely never really worked.
+	//const double audio_delay = AudioServer::get_singleton()->get_output_latency();
+	return get_playback_position() >= time + /* audio_delay + */ delay_compensation;
+}
+
+void VideoStreamPlaybackLottie::update(float p_delta) {
+	if ((!playing || paused))
+		return;
+
+	time += p_delta;
+
+	if (time < video_pos) {
+		return;
+	}
+	video_frames_pos = time / lottie->totalFrame();
+	if (loop && video_frames_pos >= lottie->totalFrame()) {
+		set_paused(true);
+		seek(0.0f);
+		play();
+		return;
+	}
+
+	bool video_frame_done = false;
+	size_t width = 0;
+	size_t height = 0;
+	lottie->size(width, height);
+	ERR_FAIL_COND(!video_frames.size());
+	while (!has_enough_video_frames() ||
+			video_frames_pos == 0 && video_frames_pos < lottie->totalFrame()) {
+		++video_frames_capacity;
+		video_frames.resize(video_frames_capacity);
+		ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
+		video_frames.write[video_frames.size() - 1].resize(width * height);
+		++video_frames_pos;
+	}
+	while (video_frames_pos > 0 && !video_frame_done) {
+		ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
+		Vector<uint32_t> video_frame = video_frames.write[video_frames.size() - 1];
+		if (should_process()) {
+			rlottie::Surface surface(video_frame.ptrw(), width, height, width * sizeof(uint32_t));
+			lottie->renderSync(video_frames_pos, surface);
+			PoolVector<uint8_t> frame_data;
+			int32_t buffer_byte_size = video_frame.size() * sizeof(uint32_t);
+			frame_data.resize(buffer_byte_size);
+			PoolVector<uint8_t>::Write w = frame_data.write();
+			memcpy(w.ptr(), video_frame.ptr(), buffer_byte_size);
+			uint8_t *ptr_w = w.ptr();
+			for (int32_t pixel_i = 0; pixel_i < frame_data.size(); pixel_i += 4) {
+				SWAP(ptr_w[pixel_i + 2], ptr_w[pixel_i + 0]);
+			}
+			Ref<Image> img = memnew(Image(width, height, 0, Image::FORMAT_RGBA8, frame_data));
+			texture->set_data(img); //Zero copy send to visual server
+			video_frame_done = true;
+		}
+		video_pos = video_frames_pos / lottie->frameRate();
+		ERR_FAIL_INDEX(video_frames_pos - 1, video_frames.size());
+		memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
+		video_frames.write[video_frames_pos] = video_frame;
+	}
+	if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
+		stop();
+	}
+}
+
+void VideoStreamPlaybackLottie::set_mix_callback(AudioMixCallback p_callback, void *p_userdata) {
+	mix_callback = p_callback;
+	mix_udata = p_userdata;
+}
+
+int VideoStreamPlaybackLottie::get_channels() const {
+	return 0;
+}
+
+int VideoStreamPlaybackLottie::get_mix_rate() const {
+	return 0;
+}
