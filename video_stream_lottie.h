@@ -82,7 +82,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	bool playing = false;
 	bool paused = false;
-	bool loop = false;
+	bool loop = true;
 	double delay_compensation = 0.0;
 	double time, video_frame_delay, video_pos = 0.0;
 
@@ -230,6 +230,9 @@ public:
 			ERR_FAIL_INDEX(video_frames_pos - 1, video_frames.size());
 			memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
 			video_frames.write[video_frames_pos] = video_frame;
+		}		
+		if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
+			stop();
 		}
 	}
 
