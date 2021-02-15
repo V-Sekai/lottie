@@ -27,8 +27,8 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#ifndef RESOURCE_IMPORTER_LOTTIE
-#define RESOURCE_IMPORTER_LOTTIE
+#ifndef RESOURCE_IMPORTER_VIDEO_LOTTIE
+#define RESOURCE_IMPORTER_VIDEO_LOTTIE
 
 #include "core/bind/core_bind.h"
 #include "core/io/file_access_pack.h"
@@ -80,7 +80,8 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 	AudioMixCallback mix_callback;
 	void *mix_udata = nullptr;
 
-	bool playing, paused = false;
+	bool playing = false;
+	bool paused = false;
 	bool loop = true;
 	double delay_compensation = 0.0;
 	double time, video_frame_delay, video_pos = 0.0;
@@ -93,10 +94,6 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 public:
 	VideoStreamPlaybackLottie() {}
 	~VideoStreamPlaybackLottie() {
-		for (int i = 0; i < video_frames.size(); i++) {
-			video_frames.write[i].clear();
-		}
-		video_frames.clear();
 	}
 
 	bool open_data(const String &p_file) {
@@ -109,6 +106,8 @@ public:
 		size_t height = 0;
 		lottie->size(width, height);
 		texture->create(width, height, Image::FORMAT_RGBA8, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
+		video_frames_pos = 0;
+		video_frames.resize(1);
 		return true;
 	}
 
@@ -188,31 +187,29 @@ public:
 			return;
 		}
 
+		if (loop && video_frames_pos >= lottie->totalFrame()) {
+			set_paused(true);
+			seek(0.0f);
+			play();
+			return;
+		}
+
 		bool video_frame_done = false;
 		size_t width = 0;
 		size_t height = 0;
 		lottie->size(width, height);
-
+		ERR_FAIL_COND(!video_frames.size());
 		while (!has_enough_video_frames() ||
-				video_frames_pos == 0) {
-			Vector<uint32_t> video_frame;
-			if (video_frames_pos >= video_frames_capacity) {
-				video_frames.resize(++video_frames_capacity);
-				Vector<uint32_t> &video_frame = video_frames.write[video_frames_capacity - 1];
-				video_frame.resize(width * height);
-			}
-			video_frame = video_frames[video_frames_pos];
-
-			if (video_frames_pos >= lottie->totalFrame()) {
-				break; //Can't demux, EOS?
-			}
-			if (video_frames.size() && video_frames_pos < lottie->totalFrame()) {
-				++video_frames_pos;
-			}
-		};
-
+				video_frames_pos == 0 && video_frames_pos < lottie->totalFrame()) {
+			++video_frames_capacity;
+			video_frames.resize(video_frames_capacity);
+			ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
+			video_frames.write[video_frames.size() - 1].resize(width * height);
+			++video_frames_pos;
+		}
 		while (video_frames_pos > 0 && !video_frame_done) {
-			Vector<uint32_t> video_frame = video_frames[0];
+			ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
+			Vector<uint32_t> video_frame = video_frames.write[video_frames.size() - 1];
 			if (should_process()) {
 				rlottie::Surface surface(video_frame.ptrw(), width, height, width * sizeof(uint32_t));
 				lottie->renderSync(video_frames_pos, surface);
@@ -230,12 +227,9 @@ public:
 				video_frame_done = true;
 			}
 			video_pos = video_frames_pos / lottie->frameRate();
+			ERR_FAIL_INDEX(video_frames_pos - 1, video_frames.size());
 			memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
 			video_frames.write[video_frames_pos] = video_frame;
-		}
-
-		if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
-			stop();
 		}
 	}
 
@@ -251,8 +245,8 @@ public:
 	}
 };
 
-class ResourceImporterLottie : public ResourceImporter {
-	GDCLASS(ResourceImporterLottie, ResourceImporter);
+class ResourceImporterVideoLottie : public ResourceImporter {
+	GDCLASS(ResourceImporterVideoLottie, ResourceImporter);
 
 public:
 	virtual String get_importer_name() const;
@@ -275,8 +269,8 @@ public:
 			List<String> *r_gen_files = NULL,
 			Variant *r_metadata = NULL);
 
-	ResourceImporterLottie() {}
-	~ResourceImporterLottie() {}
+	ResourceImporterVideoLottie() {}
+	~ResourceImporterVideoLottie() {}
 };
 
-#endif // RESOURCE_IMPORTER_LOTTIE
+#endif // RESOURCE_IMPORTER_VIDEO_LOTTIE

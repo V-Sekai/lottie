@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  resource_importer_lottie.h	                                         */
+/*  resource_importer_lottie.cpp                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -27,295 +27,111 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-#ifndef RESOURCE_IMPORTER_LOTTIE
-#define RESOURCE_IMPORTER_LOTTIE
+
+#include "video_stream_lottie.h"
 
 #include "core/bind/core_bind.h"
 #include "core/io/file_access_pack.h"
-#include "core/io/resource_importer.h"
-#include "core/io/resource_loader.h"
-#include "core/io/resource_saver.h"
 #include "scene/2d/animated_sprite.h"
 #include "scene/2d/sprite.h"
-#include "scene/3d/mesh_instance.h"
-#include "scene/3d/spatial.h"
 #include "scene/3d/sprite_3d.h"
-#include "scene/resources/packed_scene.h"
-#include "scene/resources/primitive_meshes.h"
-#include "scene/resources/video_stream.h"
+#include "scene/gui/video_player.h"
 
 #include "thirdparty/rlottie/inc/rlottie.h"
 #include "thirdparty/rlottie/inc/rlottiecommon.h"
-class VideoStreamPlaybackLottie;
-class VideoStreamLottie : public VideoStream {
 
-	GDCLASS(VideoStreamLottie, VideoStream);
+String ResourceImporterVideoLottie::get_preset_name(int p_idx) const {
+	return String();
+}
 
-	String data;
-	Vector2 scale = Vector2(1.0f, 1.0f);
+void ResourceImporterVideoLottie::get_import_options(List<ImportOption> *r_options, int p_preset) const {
+	r_options->push_back(ImportOption(PropertyInfo(Variant::VECTOR2, "scale"), Vector2(1.0f, 1.0f)));
+}
 
-protected:
-	static void _bind_methods();
+bool ResourceImporterVideoLottie::get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const {
+	return true;
+}
 
-public:
-	VideoStreamLottie();
-	virtual Ref<VideoStreamPlayback> instance_playback();
-	virtual void set_data(const String &p_file);
-	String get_data();
-	void set_scale(Vector2 p_scale);
-	Vector2 get_scale() const;
-	virtual void set_audio_track(int p_track);
-};
+String ResourceImporterVideoLottie::get_importer_name() const {
+	return "packed_scene_lottie_video";
+}
 
-class VideoStreamPlaybackLottie : public VideoStreamPlayback {
+String ResourceImporterVideoLottie::get_visible_name() const {
+	return "Packed Scene Lottie Video";
+}
 
-	GDCLASS(VideoStreamPlaybackLottie, VideoStreamPlayback);
+void ResourceImporterVideoLottie::get_recognized_extensions(List<String> *p_extensions) const {
+	p_extensions->push_back("json");
+}
 
-	String data;
+String ResourceImporterVideoLottie::get_save_extension() const {
+	return "scn";
+}
 
-	int video_frames_pos, video_frames_capacity = 0;
+String ResourceImporterVideoLottie::get_resource_type() const {
+	return "PackedScene";
+}
 
-	Vector<Vector<uint32_t> > video_frames;
-	int num_decoded_samples, samples_offse = 0;
-	AudioMixCallback mix_callback;
-	void *mix_udata = nullptr;
+int ResourceImporterVideoLottie::get_preset_count() const {
+	return 0;
+}
 
-	bool playing, paused = false;
-	bool loop = true;
-	double delay_compensation = 0.0;
-	double time, video_frame_delay, video_pos = 0.0;
-
-	PoolVector<uint8_t> frame_data;
-	Ref<ImageTexture> texture = memnew(ImageTexture);
-
-	std::unique_ptr<rlottie::Animation> lottie = nullptr;
-
-public:
-	VideoStreamPlaybackLottie() {}
-	~VideoStreamPlaybackLottie() {
-		for (int i = 0; i < video_frames.size(); i++) {
-			video_frames.write[i].clear();
-		}
-		video_frames.clear();
+Error ResourceImporterVideoLottie::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+	FileAccess *f = FileAccess::open(p_source_file, FileAccess::READ);
+	if (!f) {
+		return ERR_CANT_OPEN;
 	}
 
-	bool open_data(const String &p_file) {
-		if (p_file.empty()) {
-			return false;
-		}
-		data = p_file;
-		lottie = rlottie::Animation::loadFromData(p_file.utf8().ptrw(), p_file.md5_text().utf8().ptrw());
-		size_t width = 0;
-		size_t height = 0;
-		lottie->size(width, height);
-		texture->create(width, height, Image::FORMAT_RGBA8, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
-		return true;
-	}
+	VideoStreamLottie *stream = memnew(VideoStreamLottie);
 
-	virtual void stop() {
-		if (playing) {
-			open_data(data); //Should not fail here...
-			video_frames_capacity = video_frames_pos = 0;
-			num_decoded_samples = 0;
-			video_frame_delay = video_pos = 0.0;
-		}
-		time = 0.0;
-		playing = false;
-	}
-	virtual void play() {
-		stop();
-		delay_compensation = ProjectSettings::get_singleton()->get("audio/video_delay_compensation_ms");
-		delay_compensation /= 1000.0;
-		playing = true;
-	}
+	Vector2 scale = p_options["scale"];
+	Error err;
+	String data = f->get_file_as_string(p_source_file, &err);
+	ERR_FAIL_COND_V(err != OK, FAILED);
+	stream->set_data(data);
+	stream->set_scale(scale);
+	f->close();
+	memdelete(f);
+	VideoPlayer *root = memnew(VideoPlayer);
+    root->set_autoplay(true);
+	root->set_stream(stream);
+	Ref<PackedScene> scene;
+	scene.instance();
+	scene->pack(root);
+	String save_path = p_save_path + ".scn";
+	r_gen_files->push_back(save_path);
+	return ResourceSaver::save(save_path, scene);
+}
 
-	virtual bool is_playing() const {
-		return playing;
-	}
-	virtual void set_paused(bool p_paused) {
-		paused = p_paused;
-	}
-	virtual bool is_paused() const {
-		return paused;
-	}
-	virtual void set_loop(bool p_enable) {
-		loop = p_enable;
-	}
-	virtual bool has_loop() const {
-		return loop;
-	}
-	virtual float get_length() const {
-		return lottie->totalFrame() / lottie->frameRate();
-	}
+void VideoStreamLottie::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_data", "data"), &VideoStreamLottie::set_data);
+	ClassDB::bind_method(D_METHOD("get_data"), &VideoStreamLottie::get_data);
+	ClassDB::bind_method(D_METHOD("set_scale", "scale"), &VideoStreamLottie::set_scale);
+	ClassDB::bind_method(D_METHOD("get_scale"), &VideoStreamLottie::get_scale);
 
-	virtual float get_playback_position() const {
-		return video_pos;
-	}
-	virtual void seek(float p_time) {
-		time = p_time;
-	}
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "scale", PROPERTY_HINT_NONE), "set_scale", "get_scale");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data", PROPERTY_HINT_NONE), "set_data", "get_data");
+}
 
-	virtual void set_audio_track(int p_idx) {}
+VideoStreamLottie::VideoStreamLottie() {}
 
-	virtual Ref<Texture> get_texture() const {
-		return texture;
-	}
-	bool has_enough_video_frames() const {
-		if (video_frames_pos > 0) {
-			// FIXME: AudioServer output latency was fixed in af9bb0e, previously it used to
-			// systematically return 0. Now that it gives a proper latency, it broke this
-			// code where the delay compensation likely never really worked.
-			//const double audio_delay = AudioServer::get_singleton()->get_output_latency();
-			const double video_time = (video_frames_pos - 1) / lottie->frameRate();
-			return video_time >= time + /* audio_delay + */ delay_compensation;
-		}
-		return false;
-	}
-	bool should_process() {
-		// FIXME: AudioServer output latency was fixed in af9bb0e, previously it used to
-		// systematically return 0. Now that it gives a proper latency, it broke this
-		// code where the delay compensation likely never really worked.
-		//const double audio_delay = AudioServer::get_singleton()->get_output_latency();
-		return get_playback_position() >= time + /* audio_delay + */ delay_compensation;
-	}
-	virtual void update(float p_delta) {
-		if ((!playing || paused))
-			return;
+Ref<VideoStreamPlayback> VideoStreamLottie::instance_playback() {
+	Ref<VideoStreamPlaybackLottie> pb = memnew(VideoStreamPlaybackLottie);
+	if (pb->open_data(data))
+		return pb;
+	return NULL;
+}
 
-		time += p_delta;
-
-		if (time < video_pos) {
-			return;
-		}
-
-		bool video_frame_done = false;
-		size_t width = 0;
-		size_t height = 0;
-		lottie->size(width, height);
-
-		while (!has_enough_video_frames() ||
-				video_frames_pos == 0) {
-			Vector<uint32_t> video_frame;
-			if (video_frames_pos >= video_frames_capacity) {
-				video_frames.resize(++video_frames_capacity);
-				Vector<uint32_t> &video_frame = video_frames.write[video_frames_capacity - 1];
-				video_frame.resize(width * height);
-			}
-			video_frame = video_frames[video_frames_pos];
-
-			if (video_frames_pos >= lottie->totalFrame()) {
-				break; //Can't demux, EOS?
-			}
-			if (video_frames.size() && video_frames_pos < lottie->totalFrame()) {
-				++video_frames_pos;
-			}
-		};
-
-		while (video_frames_pos > 0 && !video_frame_done) {
-			Vector<uint32_t> video_frame = video_frames[0];
-			if (should_process()) {
-				rlottie::Surface surface(video_frame.ptrw(), width, height, width * sizeof(uint32_t));
-				lottie->renderSync(video_frames_pos, surface);
-				PoolVector<uint8_t> frame_data;
-				int32_t buffer_byte_size = video_frame.size() * sizeof(uint32_t);
-				frame_data.resize(buffer_byte_size);
-				PoolVector<uint8_t>::Write w = frame_data.write();
-				memcpy(w.ptr(), video_frame.ptr(), buffer_byte_size);
-				uint8_t *ptr_w = w.ptr();
-				for (int32_t pixel_i = 0; pixel_i < frame_data.size(); pixel_i += 4) {
-					SWAP(ptr_w[pixel_i + 2], ptr_w[pixel_i + 0]);
-				}
-				Ref<Image> img = memnew(Image(width, height, 0, Image::FORMAT_RGBA8, frame_data));
-				texture->set_data(img); //Zero copy send to visual server
-				video_frame_done = true;
-			}
-			video_pos = video_frames_pos / lottie->frameRate();
-			memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
-			video_frames.write[video_frames_pos] = video_frame;
-		}
-
-		if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
-			stop();
-		}
-	}
-
-	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata) {
-		mix_callback = p_callback;
-		mix_udata = p_userdata;
-	}
-	virtual int get_channels() const {
-		return 0;
-	}
-	virtual int get_mix_rate() const {
-		return 0;
-	}
-};
-
-class ResourceImporterLottie : public ResourceImporter {
-	GDCLASS(ResourceImporterLottie, ResourceImporter);
-
-public:
-	virtual String get_importer_name() const;
-	virtual String get_visible_name() const;
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual String get_save_extension() const;
-	virtual String get_resource_type() const;
-
-	virtual int get_preset_count() const;
-	virtual String get_preset_name(int p_idx) const;
-
-	virtual void get_import_options(List<ImportOption> *r_options,
-			int p_preset = 0) const;
-	virtual bool
-	get_option_visibility(const String &p_option,
-			const Map<StringName, Variant> &p_options) const;
-	virtual Error import(const String &p_source_file, const String &p_save_path,
-			const Map<StringName, Variant> &p_options,
-			List<String> *r_platform_variants,
-			List<String> *r_gen_files = NULL,
-			Variant *r_metadata = NULL);
-
-	ResourceImporterLottie() {}
-	~ResourceImporterLottie() {}
-};
-
-// class ResourceFormatLoaderLottie : public ResourceFormatLoader {
-// public:
-// 	virtual RES load(const String &p_path, const String &p_original_path = "", Error *r_error = NULL) {
-
-// 		FileAccess *f = FileAccess::open(p_path, FileAccess::READ);
-// 		if (!f) {
-// 			if (r_error) {
-// 				*r_error = ERR_CANT_OPEN;
-// 			}
-// 			return RES();
-// 		}
-
-// 		VideoStreamLottie *stream = memnew(VideoStreamLottie);
-// 		stream->set_file(p_path);
-
-// 		Ref<VideoStreamLottie> lottie_stream = Ref<VideoStreamLottie>(stream);
-
-// 		if (r_error) {
-// 			*r_error = OK;
-// 		}
-
-// 		f->close();
-// 		memdelete(f);
-// 		return lottie_stream;
-// 	}
-// 	virtual void get_recognized_extensions(List<String> *p_extensions) const {
-// 		p_extensions->push_back("json");
-// 	}
-// 	virtual bool handles_type(const String &p_type) const {
-// 		return ClassDB::is_parent_class(p_type, "VideoStream");
-// 	}
-// 	virtual String get_resource_type(const String &p_path) const {
-// 		String el = p_path.get_extension().to_lower();
-// 		if (el == "json")
-// 			return "VideoStreamLottie";
-// 		return "";
-// 	}
-// };
-
-#endif // RESOURCE_IMPORTER_LOTTIE
+void VideoStreamLottie::set_data(const String &p_file) {
+	data = p_file;
+}
+String VideoStreamLottie::get_data() {
+	return data;
+}
+void VideoStreamLottie::set_scale(Vector2 p_scale) {
+	scale = p_scale;
+}
+Vector2 VideoStreamLottie::get_scale() const {
+	return scale;
+}
+void VideoStreamLottie::set_audio_track(int p_track) {}
