@@ -82,7 +82,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	bool playing = false;
 	bool paused = false;
-	bool loop = true;
+	bool loop = false;
 	double delay_compensation = 0.0;
 	double time, video_frame_delay, video_pos = 0.0;
 
