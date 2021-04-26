@@ -129,7 +129,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	}
 
 	float unskipped = 0;
-	int frame_godot = 0;
+	size_t frame_godot = 0;
 	for (int32_t frame_lottie = 0; frame_lottie < lottie->totalFrame(); frame_lottie++) {
 		int skipped_frames = (int)floor(unskipped);
 		frame_lottie += skipped_frames;
