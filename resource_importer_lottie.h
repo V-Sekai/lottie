@@ -32,7 +32,7 @@
 
 #include "core/io/resource_importer.h"
 #include "core/io/resource_saver.h"
-#include "scene/3d/mesh_instance.h"
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/spatial.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/primitive_meshes.h"
