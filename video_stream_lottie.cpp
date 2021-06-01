@@ -256,8 +256,8 @@ void VideoStreamPlaybackLottie::update(float p_delta) {
 	size_t height = 0;
 	lottie->size(width, height);
 	ERR_FAIL_COND(!video_frames.size());
-	while (!has_enough_video_frames() ||
-			video_frames_pos == 0 && video_frames_pos < lottie->totalFrame()) {
+	while (!has_enough_video_frames() || 
+			(video_frames_pos == 0 && video_frames_pos < lottie->totalFrame())) {
 		++video_frames_capacity;
 		video_frames.resize(video_frames_capacity);
 		ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());

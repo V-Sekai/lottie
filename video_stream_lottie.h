@@ -60,12 +60,12 @@ protected:
 
 public:
 	VideoStreamLottie();
-	virtual Ref<VideoStreamPlayback> instance_playback();
+	virtual Ref<VideoStreamPlayback> instance_playback() override;
 	virtual void set_data(const String &p_file);
 	String get_data();
 	void set_scale(Vector2 p_scale);
 	Vector2 get_scale() const;
-	virtual void set_audio_track(int p_track);
+	virtual void set_audio_track(int p_track) override;
 };
 
 class VideoStreamPlaybackLottie : public VideoStreamPlayback {
@@ -98,53 +98,53 @@ public:
 
 	bool open_data(const String &p_file);
 
-	virtual void stop();
-	virtual void play();
+	virtual void stop() override;
+	virtual void play() override;
 
-	virtual bool is_playing() const;
-	virtual void set_paused(bool p_paused);
-	virtual bool is_paused() const;
-	virtual void set_loop(bool p_enable);
-	virtual bool has_loop() const;
-	virtual float get_length() const;
+	virtual bool is_playing() const override;
+	virtual void set_paused(bool p_paused) override;
+	virtual bool is_paused() const override;
+	virtual void set_loop(bool p_enable) override;
+	virtual bool has_loop() const override;
+	virtual float get_length() const override;
 
-	virtual float get_playback_position() const;
-	virtual void seek(float p_time);
+	virtual float get_playback_position() const override;
+	virtual void seek(float p_time) override;
 
-	virtual void set_audio_track(int p_idx);
-	virtual Ref<Texture2D> get_texture() const;
+	virtual void set_audio_track(int p_idx) override;
+	virtual Ref<Texture2D> get_texture() const override;
 	bool has_enough_video_frames() const;
 	bool should_process();
-	virtual void update(float p_delta);
+	virtual void update(float p_delta) override;
 
-	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata);
-	virtual int get_channels() const;
-	virtual int get_mix_rate() const;
+	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata) override;
+	virtual int get_channels() const override;
+	virtual int get_mix_rate() const override;
 };
 
 class ResourceImporterVideoLottie : public ResourceImporter {
 	GDCLASS(ResourceImporterVideoLottie, ResourceImporter);
 
 public:
-	virtual String get_importer_name() const;
-	virtual String get_visible_name() const;
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual String get_save_extension() const;
-	virtual String get_resource_type() const;
+	virtual String get_importer_name() const override;
+	virtual String get_visible_name() const override;
+	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
+	virtual String get_save_extension() const override;
+	virtual String get_resource_type() const override;
 
-	virtual int get_preset_count() const;
-	virtual String get_preset_name(int p_idx) const;
+	virtual int get_preset_count() const override;
+	virtual String get_preset_name(int p_idx) const override;
 
 	virtual void get_import_options(List<ImportOption> *r_options,
-			int p_preset = 0) const;
+			int p_preset = 0) const override;
 	virtual bool
 	get_option_visibility(const String &p_option,
-			const Map<StringName, Variant> &p_options) const;
+			const Map<StringName, Variant> &p_options) const override;
 	virtual Error import(const String &p_source_file, const String &p_save_path,
 			const Map<StringName, Variant> &p_options,
 			List<String> *r_platform_variants,
 			List<String> *r_gen_files = NULL,
-			Variant *r_metadata = NULL);
+			Variant *r_metadata = NULL) override;
 
 	ResourceImporterVideoLottie() {}
 	~ResourceImporterVideoLottie() {}

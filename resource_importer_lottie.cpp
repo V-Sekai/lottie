@@ -82,10 +82,6 @@ String ResourceImporterLottie::get_resource_type() const {
 	return "PackedScene";
 }
 
-int ResourceImporterLottie::get_preset_count() const {
-	return 0;
-}
-
 Error ResourceImporterLottie::import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	FileAccess *file = FileAccess::create(FileAccess::ACCESS_RESOURCES);
 	String data;

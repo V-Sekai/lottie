@@ -32,15 +32,27 @@
 #include "core/io/resource_importer.h"
 #include "resource_importer_lottie.h"
 #include "video_stream_lottie.h"
+#include "editor/editor_node.h"
 
-void register_lottie_types() {
+#ifdef TOOLS_ENABLED
+static void _editor_init() {
 	Ref<ResourceImporterLottie> lottie_sprite_animation;
 	lottie_sprite_animation.instance();
 	ResourceFormatImporter::get_singleton()->add_importer(lottie_sprite_animation);
 	Ref<ResourceImporterVideoLottie> lottie_video_animation;
 	lottie_video_animation.instance();
 	ResourceFormatImporter::get_singleton()->add_importer(lottie_video_animation);
+}
+#endif
+void register_lottie_types() {
+#ifdef TOOLS_ENABLED
+	ClassDB::APIType prev_api = ClassDB::get_current_api();
+	ClassDB::set_current_api(ClassDB::API_EDITOR);
 	ClassDB::register_class<VideoStreamLottie>();
+	ClassDB::register_class<ResourceImporterLottie>();
+	ClassDB::set_current_api(prev_api);
+	EditorNode::add_init_callback(_editor_init);
+#endif
 }
 
 void unregister_lottie_types() {
