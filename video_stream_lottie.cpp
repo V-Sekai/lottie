@@ -30,10 +30,10 @@
 
 #include "video_stream_lottie.h"
 
-#include "core/bind/core_bind.h"
+#include "core/core_bind.h"
 #include "core/io/file_access_pack.h"
-#include "scene/2d/animated_sprite.h"
-#include "scene/2d/sprite.h"
+#include "scene/2d/animated_sprite_2d.h"
+#include "scene/2d/sprite_2d.h"
 #include "scene/3d/sprite_3d.h"
 #include "scene/gui/video_player.h"
 
@@ -93,7 +93,7 @@ Error ResourceImporterVideoLottie::import(const String &p_source_file, const Str
 	f->close();
 	memdelete(f);
 	VideoPlayer *root = memnew(VideoPlayer);
-    root->set_autoplay(true);
+	root->set_autoplay(true);
 	root->set_stream(stream);
 	Ref<PackedScene> scene;
 	scene.instance();
@@ -117,8 +117,9 @@ VideoStreamLottie::VideoStreamLottie() {}
 
 Ref<VideoStreamPlayback> VideoStreamLottie::instance_playback() {
 	Ref<VideoStreamPlaybackLottie> pb = memnew(VideoStreamPlaybackLottie);
-	if (pb->open_data(data))
+	if (pb->open_data(data)) {
 		return pb;
+	}
 	return NULL;
 }
 
@@ -136,14 +137,14 @@ Vector2 VideoStreamLottie::get_scale() const {
 }
 void VideoStreamLottie::set_audio_track(int p_track) {}
 
- VideoStreamPlaybackLottie::VideoStreamPlaybackLottie() {
+VideoStreamPlaybackLottie::VideoStreamPlaybackLottie() {
 }
 
 VideoStreamPlaybackLottie::~VideoStreamPlaybackLottie() {
 }
 
 bool VideoStreamPlaybackLottie::open_data(const String &p_file) {
-	if (p_file.empty()) {
+	if (p_file.is_empty()) {
 		return false;
 	}
 	data = p_file;
@@ -151,7 +152,6 @@ bool VideoStreamPlaybackLottie::open_data(const String &p_file) {
 	size_t width = 0;
 	size_t height = 0;
 	lottie->size(width, height);
-	texture->create(width, height, Image::FORMAT_RGBA8, Texture::FLAG_FILTER | Texture::FLAG_VIDEO_SURFACE);
 	video_frames_pos = 0;
 	video_frames.resize(1);
 	return true;
@@ -210,7 +210,7 @@ void VideoStreamPlaybackLottie::seek(float p_time) {
 void VideoStreamPlaybackLottie::set_audio_track(int p_idx) {
 }
 
-Ref<Texture> VideoStreamPlaybackLottie::get_texture() const {
+Ref<Texture2D> VideoStreamPlaybackLottie::get_texture() const {
 	return texture;
 }
 
@@ -261,32 +261,30 @@ void VideoStreamPlaybackLottie::update(float p_delta) {
 		++video_frames_capacity;
 		video_frames.resize(video_frames_capacity);
 		ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
-		video_frames.write[video_frames.size() - 1].resize(width * height);
+		video_frames[video_frames.size() - 1].resize(width * height);
 		++video_frames_pos;
 	}
 	while (video_frames_pos > 0 && !video_frame_done) {
 		ERR_FAIL_INDEX(video_frames.size() - 1, video_frames.size());
-		Vector<uint32_t> video_frame = video_frames.write[video_frames.size() - 1];
+		LocalVector<uint32_t> video_frame = video_frames.ptr()[video_frames.size() - 1];
 		if (should_process()) {
-			rlottie::Surface surface(video_frame.ptrw(), width, height, width * sizeof(uint32_t));
+			rlottie::Surface surface(video_frame.ptr(), width, height, width * sizeof(uint32_t));
 			lottie->renderSync(video_frames_pos, surface);
-			PoolVector<uint8_t> frame_data;
+			LocalVector<uint8_t> frame_data;
 			int32_t buffer_byte_size = video_frame.size() * sizeof(uint32_t);
 			frame_data.resize(buffer_byte_size);
-			PoolVector<uint8_t>::Write w = frame_data.write();
-			memcpy(w.ptr(), video_frame.ptr(), buffer_byte_size);
-			uint8_t *ptr_w = w.ptr();
+			memcpy(frame_data.ptr(), video_frame.ptr(), buffer_byte_size);
 			for (int32_t pixel_i = 0; pixel_i < frame_data.size(); pixel_i += 4) {
-				SWAP(ptr_w[pixel_i + 2], ptr_w[pixel_i + 0]);
+				SWAP(frame_data.ptr()[pixel_i + 2], frame_data.ptr()[pixel_i + 0]);
 			}
 			Ref<Image> img = memnew(Image(width, height, 0, Image::FORMAT_RGBA8, frame_data));
-			texture->set_data(img); //Zero copy send to visual server
+			texture->create_from_image(img); //Zero copy send to visual server
 			video_frame_done = true;
 		}
 		video_pos = video_frames_pos / lottie->frameRate();
 		ERR_FAIL_INDEX(video_frames_pos - 1, video_frames.size());
-		memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
-		video_frames.write[video_frames_pos] = video_frame;
+		memmove(video_frames.ptr(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
+		video_frames[video_frames_pos] = video_frame;
 	}
 	if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
 		stop();

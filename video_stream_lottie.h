@@ -30,15 +30,16 @@
 #ifndef RESOURCE_IMPORTER_VIDEO_LOTTIE
 #define RESOURCE_IMPORTER_VIDEO_LOTTIE
 
-#include "core/bind/core_bind.h"
+#include "core/core_bind.h"
 #include "core/io/file_access_pack.h"
 #include "core/io/resource_importer.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "scene/2d/animated_sprite.h"
-#include "scene/2d/sprite.h"
-#include "scene/3d/mesh_instance.h"
-#include "scene/3d/spatial.h"
+#include "core/templates/local_vector.h"
+#include "scene/2d/animated_sprite_2d.h"
+#include "scene/2d/sprite_2d.h"
+#include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/node_3d.h"
 #include "scene/3d/sprite_3d.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/primitive_meshes.h"
@@ -75,7 +76,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	int video_frames_pos, video_frames_capacity = 0;
 
-	Vector<Vector<uint32_t> > video_frames;
+	LocalVector<LocalVector<uint32_t> > video_frames;
 	int num_decoded_samples, samples_offse = 0;
 	AudioMixCallback mix_callback;
 	void *mix_udata = nullptr;
@@ -86,7 +87,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 	double delay_compensation = 0.0;
 	double time, video_frame_delay, video_pos = 0.0;
 
-	PoolVector<uint8_t> frame_data;
+	Vector<uint8_t> frame_data;
 	Ref<ImageTexture> texture = memnew(ImageTexture);
 
 	std::unique_ptr<rlottie::Animation> lottie = nullptr;
@@ -111,8 +112,7 @@ public:
 	virtual void seek(float p_time);
 
 	virtual void set_audio_track(int p_idx);
-
-	virtual Ref<Texture> get_texture() const;
+	virtual Ref<Texture2D> get_texture() const;
 	bool has_enough_video_frames() const;
 	bool should_process();
 	virtual void update(float p_delta);
