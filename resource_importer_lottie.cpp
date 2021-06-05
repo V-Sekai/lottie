@@ -122,7 +122,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 
 	float unskipped = 0;
 	size_t frame_godot = 0;
-	for (int32_t frame_lottie = 0; frame_lottie < lottie->totalFrame(); frame_lottie++) {
+	for (uint32_t frame_lottie = 0; frame_lottie < lottie->totalFrame(); frame_lottie++) {
 		int skipped_frames = (int)floor(unskipped);
 		frame_lottie += skipped_frames;
 		unskipped -= skipped_frames;
@@ -135,7 +135,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 		int32_t buffer_byte_size = buffer.size() * sizeof(uint32_t);
 		pixels.resize(buffer_byte_size);
 		memcpy(pixels.ptr(), buffer.ptr(), buffer_byte_size);
-		for (int32_t pixel_i = 0; pixel_i < pixels.size(); pixel_i += 4) {
+		for (uint32_t pixel_i = 0; pixel_i < pixels.size(); pixel_i += 4) {
 			SWAP(pixels.ptr()[pixel_i + 2], pixels.ptr()[pixel_i + 0]);
 		}
 		Ref<Image> img;

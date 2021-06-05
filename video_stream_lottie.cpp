@@ -274,7 +274,7 @@ void VideoStreamPlaybackLottie::update(float p_delta) {
 			int32_t buffer_byte_size = video_frame.size() * sizeof(uint32_t);
 			frame_data.resize(buffer_byte_size);
 			memcpy(frame_data.ptr(), video_frame.ptr(), buffer_byte_size);
-			for (int32_t pixel_i = 0; pixel_i < frame_data.size(); pixel_i += 4) {
+			for (uint32_t pixel_i = 0; pixel_i < frame_data.size(); pixel_i += 4) {
 				SWAP(frame_data.ptr()[pixel_i + 2], frame_data.ptr()[pixel_i + 0]);
 			}
 			Ref<Image> img = memnew(Image(width, height, 0, Image::FORMAT_RGBA8, frame_data));

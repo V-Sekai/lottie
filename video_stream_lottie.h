@@ -47,6 +47,7 @@
 
 #include "thirdparty/rlottie/inc/rlottie.h"
 #include "thirdparty/rlottie/inc/rlottiecommon.h"
+#include <stdint.h>
 class VideoStreamPlaybackLottie;
 class VideoStreamLottie : public VideoStream {
 
@@ -74,7 +75,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	String data;
 
-	int video_frames_pos, video_frames_capacity = 0;
+	uint32_t video_frames_pos, video_frames_capacity = 0;
 
 	LocalVector<LocalVector<uint32_t> > video_frames;
 	int num_decoded_samples, samples_offse = 0;
