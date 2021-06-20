@@ -104,7 +104,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	ERR_FAIL_COND_V(!width, FAILED);
 	ERR_FAIL_COND_V(!height, FAILED);
 	Ref<SpriteFrames> frames;
-	frames.instance();
+	frames.instantiate();
 	List<StringName> animations;
 	frames->get_animation_list(&animations);
 	String name = animations[0];
@@ -116,7 +116,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	image_textures.resize(godot_frame_count);
 	for (int32_t frame_godot = 0; frame_godot < godot_frame_count; frame_godot++) {
 		Ref<ImageTexture> tex;
-		tex.instance();
+		tex.instantiate();
 		image_textures.write[frame_godot] = tex;
 	}
 
@@ -139,7 +139,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 			SWAP(pixels.ptr()[pixel_i + 2], pixels.ptr()[pixel_i + 0]);
 		}
 		Ref<Image> img;
-		img.instance();
+		img.instantiate();
 		img->create((int)width, (int)height, false, Image::FORMAT_RGBA8, pixels);
 		Dictionary d = Engine::get_singleton()->get_version_info();
 		Ref<ImageTexture> tex = image_textures.write[frame_godot];
@@ -184,7 +184,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 		animate_sprite->set_sprite_frames(frames);
 	}
 	Ref<PackedScene> scene;
-	scene.instance();
+	scene.instantiate();
 	scene->pack(root);
 	String save_path = p_save_path + ".scn";
 	r_gen_files->push_back(save_path);

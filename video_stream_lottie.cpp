@@ -96,7 +96,7 @@ Error ResourceImporterVideoLottie::import(const String &p_source_file, const Str
 	root->set_autoplay(true);
 	root->set_stream(stream);
 	Ref<PackedScene> scene;
-	scene.instance();
+	scene.instantiate();
 	scene->pack(root);
 	String save_path = p_save_path + ".scn";
 	r_gen_files->push_back(save_path);

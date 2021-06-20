@@ -37,10 +37,10 @@
 #ifdef TOOLS_ENABLED
 static void _editor_init() {
 	Ref<ResourceImporterLottie> lottie_sprite_animation;
-	lottie_sprite_animation.instance();
+	lottie_sprite_animation.instantiate();
 	ResourceFormatImporter::get_singleton()->add_importer(lottie_sprite_animation);
 	Ref<ResourceImporterVideoLottie> lottie_video_animation;
-	lottie_video_animation.instance();
+	lottie_video_animation.instantiate();
 	ResourceFormatImporter::get_singleton()->add_importer(lottie_video_animation);
 }
 #endif
