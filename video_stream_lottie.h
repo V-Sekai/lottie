@@ -35,7 +35,6 @@
 #include "core/io/resource_importer.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "core/templates/local_vector.h"
 #include "scene/2d/animated_sprite_2d.h"
 #include "scene/2d/sprite_2d.h"
 #include "scene/3d/mesh_instance_3d.h"
@@ -77,7 +76,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	uint32_t video_frames_pos, video_frames_capacity = 0;
 
-	Vector<LocalVector<uint32_t> > video_frames;
+	Vector<Vector<uint32_t> > video_frames;
 	int num_decoded_samples, samples_offse = 0;
 	AudioMixCallback mix_callback;
 	void *mix_udata = nullptr;
