@@ -77,7 +77,7 @@ class VideoStreamPlaybackLottie : public VideoStreamPlayback {
 
 	uint32_t video_frames_pos, video_frames_capacity = 0;
 
-	LocalVector<LocalVector<uint32_t> > video_frames;
+	Vector<LocalVector<uint32_t> > video_frames;
 	int num_decoded_samples, samples_offse = 0;
 	AudioMixCallback mix_callback;
 	void *mix_udata = nullptr;
