@@ -283,7 +283,7 @@ void VideoStreamPlaybackLottie::update(float p_delta) {
 		}
 		video_pos = video_frames_pos / lottie->frameRate();
 		ERR_FAIL_INDEX(int64_t(video_frames_pos) - 1, video_frames.size());
-		memmove(video_frames.ptrw(), video_frames.ptr() + 1, (--video_frames_pos) * sizeof(void *));
+		memcpy(video_frames.write[0].ptrw(), video_frames.write[0].ptrw() + 1, (--video_frames_pos) * sizeof(void *));
 		video_frames.write[video_frames_pos] = video_frame;
 	}
 	if (video_frames_pos == 0 && video_frames_pos >= lottie->totalFrame()) {
