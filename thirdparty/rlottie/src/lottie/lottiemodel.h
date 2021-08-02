@@ -622,7 +622,7 @@ public:
         if (isStatic()) return impl.mStaticData.mOpacity;
         return impl.mData->opacity(frameNo);
     }
-    Transform(const Transform &) = delete;
+    Transform(const Transform3D &) = delete;
     Transform(Transform &&) = delete;
     Transform &operator=(Transform &) = delete;
     Transform &operator=(Transform &&) = delete;
